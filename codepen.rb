@@ -29,7 +29,7 @@ module Jekyll
 
     def render(context)
       if @pen && @user
-        "<pre class=\"codepen\" data-height=\"#{@height}\" data-type=\"#{@type}\" data-href=\"#{@pen}\" data-user=\"#{@user}\"><code></code></pre>\n<script async src=\"http://codepen.io:/assets/embed/ei.js\"></script>"
+        "<pre class=\"codepen\" data-height=\"#{@height}\" data-type=\"#{@type}\" data-href=\"#{@pen}\" data-user=\"#{@user}\"><code> </code></pre>\n<script async src=\"http://codepen.io:/assets/embed/ei.js\"></script>"
       else
         "Error processing input, expected syntax: {% codepen href user [type] [height] %}"
       end
