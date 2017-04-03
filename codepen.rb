@@ -1,30 +1,67 @@
-# Title: CodePen plugin for Jekyll/Octopress
-# Author: Volker Rose (@riddla | http://volker-rose.de/ | volker.rose@gmail.com)
-# Updates: Aaron Gustafson (@aarongustafson | https://www.aaron-gustafson.com)
-# Info: http://volker-rose.de/blog/2012/11/03/octopress-codepen-plugin/
-# Credits: "Heavily inspired" (e.g. shamelessly copied) from the jsFiddle tag/plugin for Jekyll by Brian Arnold (@brianarn)
-# Description: Given a CodePen shortcode, outputs the CodePen embed code e.g. the iframe.
+# Title: CodePen plugin for Jekyll
+# Description: Liquid tag to generate a CodePen embed.
+# Authors:
+#  - Volker Rose (@riddla | http://volker-rose.de/ | volker.rose@gmail.com)
+#  - Aaron Gustafson (@aarongustafson | https://www.aaron-gustafson.com)
+#  - Joey Hoer (@joeyhoer | https://joeyhoer.com)
 #
-# Syntax: {% codepen href user [type] [height] [preview] %}
+# Link: https://blog.codepen.io/documentation/features/embedded-pens/
 #
-# Examples:
+# Note: You must include the CodePen script elsewhere on your page:
+#   <script async src="http://codepen.io:/assets/embed/ei.js"></script>
 #
-# Input: {% codepen vhfon riddla %}
-# Output: <pre class="codepen" data-height="300" data-type="result" data-href="vhfon" data-user="riddla"><code></code></pre>
-#         <script async src="http://codepen.io:/assets/embed/ei.js"></script>
+# Syntax: {% codepen slug-hash [data-attr:value]... %}
 #
-# Input: {% codepen vhfon riddla css 600 preview %}
-# Output: <pre class="codepen" data-height="600" data-type="css" data-href="vhfon" data-user="riddla"><code></code></pre>
-#         <script async src="http://codepen.io:/assets/embed/ei.js"></script>
+# Example:
+#   {% codepen xwder %}
+#   <p data-embed-version="2" data-slug-hash="xwder" class="codepen"></p>
+#
+# Example:
+#   {% codepen xwder height:600 default-tab:css preview:true %}
+#   <p data-embed-version="2" data-height="600" data-default-tab="css"
+#   data-preview="true" data-slug-hash="xwder" class="codepen"></p>
+#
 
 if ( ! defined? CODEPEN_CACHE_DIRECTORY )
-  CODEPEN_CACHE_DIRECTORY = File.expand_path('../../.cache', __FILE__)
+  CODEPEN_CACHE_DIRECTORY = File.expand_path('../../_cache', __FILE__)
   FileUtils.mkdir_p(CODEPEN_CACHE_DIRECTORY)
 end
 
 module Jekyll
   class CodePen < Liquid::Tag
-    # load from the cache
+
+    ## Constants
+
+    @@ATTRIBUTES = %w(
+      height
+      active-link-color
+      active-tab-color
+      animations
+      border
+      border-color
+      class
+      custom-css-url
+      default-tab
+      embed-version
+      link-logo-color
+      preview
+      rerun-position
+      show-tab-bar
+      slug-hash
+      tab-bar-color
+      tab-link-color
+      theme-id
+    )
+
+    @@DEFAULTS = {
+      'embed-version' => '2'
+    }
+
+    def self.DEFAULTS
+      return @@DEFAULTS
+    end
+
+    # Load metadata from cache
     Cache_file = File.join(CODEPEN_CACHE_DIRECTORY, "codepen.yml")
     if File.exists?(Cache_file)
       Cache = open(Cache_file) { |f| YAML.load(f) }
@@ -33,66 +70,110 @@ module Jekyll
     end
 
     def initialize(tag_name, markup, tokens)
-      if /(?<pen>\w+)(?:\s(?<user>\w+))(?:\s(?<type>\w+))?(?:\s(?<height>\d+))?(?:\s(?<preview>\w+))?/ =~ markup
-        @pen     = pen
-        @user    = user
-        @type    = type || 'result'
-        @height  = height || '300'
-        @preview = preview == 'preview' 
+      super
+
+      @config = {}
+      # Set defaults
+      override_config(@@DEFAULTS)
+
+      # Override configuration with values defined within _config.yml
+      if Jekyll.configuration({}).has_key?('codepen')
+        config = Jekyll.configuration({})['codepen']
+        override_config(config)
       end
+
+      params = markup.split
+
+      # First argument (required) is slug_hash
+      @slug_hash = params.shift.strip
+      override_config({'slug-hash' => @slug_hash})
+
+      if params.size > 0
+        # Override configuration with parameters defined within Liquid tag
+        config = {} # Reset local config
+        params.each do |param|
+          param = param.gsub /\s+/, '' # Remove whitespaces
+          key, value = param.split(':',2) # Split first occurrence of ':' only
+          config[key.to_sym] = value
+        end
+        override_config(config)
+      end
+    end
+
+    def override_config(config)
+      config.each{ |key,value| @config[key] = value }
     end
 
     def render(context)
-      if @pen && @user
-        cache_key = "#{@user}-#{@pen}"
+      content = super
 
-        # use the cached one if we have it
+      if @slug_hash
+        cache_key = "#{@slug_hash}"
+
+        # Use cached metadata, if available
         if Cache.has_key? cache_key
-          puts "CodePen Embed: Using Cached Pen #{@id}"
-          return Cache[cache_key]
+          # puts "CodePen Embed: Using Cached Pen #{@id}"
+          user        = Cache[cache_key]['user']
+          title       = Cache[cache_key]['title']
+          author_name = Cache[cache_key]['author_name']
         end
 
-        # build it fresh
-        pen_url = "http://codepen.io/#{@user}/pen/#{@pen}"
+        # Build new embed
+        # Note: /#{@user}/ is optional
+        pen_url = "//codepen.io/pen/#{@slug_hash}"
 
-        # extract video information using a REST command 
-        response = Net::HTTP.get_response("codepen.io","/api/oembed?url=#{pen_url}")
-        data = response.body
-        result = JSON.parse(data)
-        if ! result['success']
-          puts "CodePen Embed: Pen #{@id} not found"
+        # Extract pen information
+        if ! user || ! title || ! author_name
+          uri = URI.parse("https://codepen.io/api/oembed?url=#{pen_url}")
+          http = Net::HTTP.new(uri.host, uri.port)
+          http.use_ssl = true
+          request = Net::HTTP::Get.new(uri.request_uri)
+          response = http.request(request)
+          data = response.body
+          result = JSON.parse(data)
+          if ! result['success']
+            puts "CodePen Embed: Pen #{@id} not found"
+          end
+
+          # Set metadata
+          author_url = result['author_url']
+          author_uri = URI.parse(author_url)
+          user = author_uri.path.split('/').drop(1).first
+          title = result['title']
+          author_name = result['author_name']
+
+          # Store metadata in cache
+          metadata = {
+            'user'        => user,
+            'title'       => title,
+            'author_name' => author_name
+          }
+          Cache[cache_key] = metadata
+          File.open(Cache_file, 'w') { |f| YAML.dump(Cache, f) }
         end
 
-        attrs = {
-          'class'       => 'codepen',
-          'data-user'   => @user,
-          'data-href'   => @pen,
-          'data-height' => @height,
-          'data-type'   => @type,
-        }
-        if @preview
-          attrs['data-preview'] = true
-        end
-        # build the text
-        text = "See the Pen <a href=\"#{pen_url}\">#{result['title']}</a> "
-        text << "by #{result['author_name']} (<a href=\"//codepen.io/#{@user}\">#{@user}</a>) "
-        text << 'on <a href="//codepen.io">CodePen</a>.'
-        code = '<p'
-        attrs.each do |key,value|
-          code << " #{key}=\"#{value}\""
-        end
-        code << ">#{text}</p>"
-        code << '<script async src="//codepen.io/assets/embed/ei.js"></script>'
-        
-        # store it back in the cache
-        Cache[cache_key] = code
-        File.open(Cache_file, 'w') { |f| YAML.dump(Cache, f) }
-    
-        return code
+        # Build embed
+        <<~HTML
+        <p #{render_data_attributes()} class="codepen">
+          See the Pen <a href=\"#{pen_url}\">#{title}</a>
+          by #{author_name} (<a href=\"//codepen.io/#{user}\">#{user}</a>).
+        </p>
+        HTML
       else
-        puts "CodePen Embed: Error processing input, expected syntax {% codepen href user [type] [height] [preview] %}"
+        puts "CodePen Embed: Error processing input, expected syntax {% codepen slug [data-attr:value]... %}"
       end
     end
+
+    def render_data_attributes
+      result = ''
+      @config.each do |key,value|
+        if @@ATTRIBUTES.include?(key.to_s)
+          result << " data-#{key}=\"#{value}\""
+        end
+      end
+      return result
+    end
+
   end
 end
 
