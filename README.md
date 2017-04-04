@@ -56,3 +56,16 @@ rerun-position    | bottom right | top/left/right/bottom/hidden
 {% codepen xwder height:600 default-tab:css preview:true %}
 <p data-embed-version="2" data-height="600" data-default-tab="css" data-preview="true" data-slug-hash="xwder" class="codepen"></p>
 ```
+
+## Global Configuration
+
+Options may also be set globally by defining a `codepen` entry in the `_config.yml` file.
+
+```
+codepen:
+  theme-id: dark
+  show-tab-bar: false
+  rerun-position: hidden
+```
+
+**Note:** Inline options overwrite the global options.
