@@ -9,7 +9,7 @@ Move `codepen.rb` into the `_plugins` folder at the root of your Octopress proje
 **Note:** This plugin does not include the CodePen script. You must include the following script elsewhere on your page:
 
 ```html
-<script async src="http://codepen.io:/assets/embed/ei.js"></script>
+<script async src="//codepen.io/assets/embed/ei.js"></script>
 ```
 
 # Syntax
