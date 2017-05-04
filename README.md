@@ -6,10 +6,13 @@ This plugin adds a `{% codepen %}` Liquid tag to Jekyll and Octopress that gener
 
 Move `codepen.rb` into the `_plugins` folder at the root of your Octopress project.
 
-**Note:** This plugin does not include the CodePen script. You must include the following script elsewhere on your page:
+**Note:** This plugin does not include the CodePen script. You must include the CodePen script elsewhere on your page. I recommend using the follow snippet to include the script automatically on pages that include the CodePen widget.
 
-```html
-<script async src="//codepen.io/assets/embed/ei.js"></script>
+```liquid
+{% if page.content contains '<p class="codepen"' %}
+<!-- CodePen -->
+<script async src="//assets.codepen.io/assets/embed/ei.js"></script>
+{% endif %}
 ```
 
 # Syntax
