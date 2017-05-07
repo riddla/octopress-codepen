@@ -8,7 +8,7 @@
 # Link: https://blog.codepen.io/documentation/features/embedded-pens/
 #
 # Note: You must include the CodePen script elsewhere on your page:
-#   <script async src="http://codepen.io:/assets/embed/ei.js"></script>
+#   <script async src="//assets.codepen.io/assets/embed/ei.js"></script>
 #
 # Syntax: {% codepen slug-hash [data-attr:value]... %}
 #
