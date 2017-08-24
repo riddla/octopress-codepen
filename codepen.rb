@@ -152,13 +152,30 @@ module Jekyll
           File.open(Cache_file, 'w') { |f| YAML.dump(Cache, f) }
         end
 
-        # Build embed
-        <<~HTML
-        <p #{render_data_attributes()} class="codepen">
-          See the Pen <a href=\"#{pen_url}\">#{title}</a>
-          by #{author_name} (<a href=\"//codepen.io/#{user}\">#{user}</a>).
-        </p>
-        HTML
+        template_path = File.join(Dir.pwd, "_includes", "codepen.html")
+        if File.exist?(template_path)
+          site = context.registers[:site]
+
+          partial = File.read(template_path)
+          template = Liquid::Template.parse(partial)
+
+          template.render!(({
+            "pen_url" => pen_url,
+            "user" => user,
+            "title" => title,
+            "author_name" => author_name,
+            "data_attributes" => render_data_attributes()}).merge(site.site_payload))
+        else
+          # Build embed
+          <<~HTML
+          <p class="codepen" #{render_data_attributes()}>
+            See the Pen <a href=\"#{pen_url}\">#{title}</a>
+            by #{author_name} (<a href=\"//codepen.io/#{user}\">#{user}</a>)
+            on <a href=\"//codepen.io\">CodePen</a>.
+          </p>
+          <script async src=\"https://production-assets.codepen.io/assets/embed/ei.js\"></script>
+          HTML
+        end
       else
         puts "CodePen Embed: Error processing input, expected syntax {% codepen slug [data-attr:value]... %}"
       end

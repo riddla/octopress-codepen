@@ -1,19 +1,10 @@
 # Introduction
 
-This plugin adds a `{% codepen %}` Liquid tag to Jekyll and Octopress that generates a [CodePen](http://codepen.io) embed code.
+This plugin adds a `{% codepen %}` Liquid tag to Jekyll (and Octopress) that generates a [CodePen](http://codepen.io) embed code.
 
 # Installation
 
-Move `codepen.rb` into the `_plugins` folder at the root of your Octopress project.
-
-**Note:** This plugin does not include the CodePen script. You must include the CodePen script elsewhere on your page. I recommend using the follow snippet to include the script automatically on pages that include the CodePen widget.
-
-```liquid
-{% if page.content contains '<p class="codepen"' %}
-<!-- CodePen -->
-<script async src="//assets.codepen.io/assets/embed/ei.js"></script>
-{% endif %}
-```
+Move `codepen.rb` into the `_plugins` folder at the root of your Jekyll project.
 
 # Syntax
 
@@ -50,12 +41,12 @@ rerun-position    | bottom right | top/left/right/bottom/hidden
 
 ## Examples
 
-```
+```liquid
 {% codepen xwder %}
 <p data-embed-version="2" data-slug-hash="xwder" class="codepen"></p>
 ```
 
-```
+```liquid
 {% codepen xwder height:600 default-tab:css preview:true %}
 <p data-embed-version="2" data-height="600" data-default-tab="css" data-preview="true" data-slug-hash="xwder" class="codepen"></p>
 ```
@@ -72,3 +63,23 @@ codepen:
 ```
 
 **Note:** Inline options overwrite the global options.
+
+## Template
+
+This extension allows you to define a template located at `_includes/codepen.html`, exposing `pen_url`, `user`, `title`, `author_name` and `data_attributes` variables, to override the default output.
+
+```liquid
+<p class="codepen" {{ data_attributes }}>
+  See the Pen <a href="{{ pen_url }}">{{ title }}</a>
+  by {{ author_name }} (<a href="//codepen.io/{{ user }}">{{ user }}</a>).
+</p>
+```
+
+**Note:** The sample template above does not include the CodePen script. You may include the CodePen script automatically on pages which contain the CodePen widget using the follow snippet:
+
+```liquid
+{% if page.content contains '<p class="codepen"' %}
+<!-- CodePen -->
+<script async src="//assets.codepen.io/assets/embed/ei.js"></script>
+{% endif %}
+```
